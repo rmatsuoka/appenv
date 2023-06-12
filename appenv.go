@@ -24,14 +24,14 @@ func LoadFS(v any, fsys fs.FS, dir string) error {
 	if appenv == "" {
 		appenv = DefaultAPP_ENV
 	}
-	return LoadAPP_ENV(v, dir, appenv)
+	return LoadFSOnAPP_ENV(v, fsys, dir, appenv)
 }
 
-func LoadAPP_ENV(v any, dir string, APP_ENV string) error {
-	return LoadFSAPP_ENV(v, os.DirFS("."), dir, APP_ENV)
+func LoadOnAPP_ENV(v any, dir string, APP_ENV string) error {
+	return LoadFSOnAPP_ENV(v, os.DirFS("."), dir, APP_ENV)
 }
 
-func LoadFSAPP_ENV(v any, fsys fs.FS, dir string, APP_ENV string) error {
+func LoadFSOnAPP_ENV(v any, fsys fs.FS, dir string, APP_ENV string) error {
 	err := setFromFile(v, filepath.Join(dir, APP_ENV+".env"), fsys)
 	if err != nil {
 		return err
