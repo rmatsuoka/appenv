@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -16,28 +17,48 @@ import (
 var DefaultAPP_ENV = "production"
 
 func Load(v any, dir string) error {
-	return LoadFS(v, os.DirFS("."), dir)
+	return load(v, openOS, dir)
 }
 
 func LoadFS(v any, fsys fs.FS, dir string) error {
+	return load(v, openFS(fsys), dir)
+}
+
+func LoadOnAPP_ENV(v any, dir string, APP_ENV string) error {
+	return loadOnAPP_ENV(v, openOS, dir, APP_ENV)
+}
+
+func LoadFSOnAPP_ENV(v any, fsys fs.FS, dir string, APP_ENV string) error {
+	return loadOnAPP_ENV(v, openFS(fsys), dir, APP_ENV)
+}
+
+type openFunc func(dir, base string) (fs.File, error)
+
+func openOS(dir, base string) (fs.File, error) {
+	return os.Open(filepath.Join(dir, base))
+}
+
+func openFS(fsys fs.FS) openFunc {
+	return func(dir, base string) (fs.File, error) {
+		return fsys.Open(path.Join(dir, base))
+	}
+}
+
+func load(v any, open openFunc, dir string) error {
 	appenv := os.Getenv("APP_ENV")
 	if appenv == "" {
 		appenv = DefaultAPP_ENV
 	}
-	return LoadFSOnAPP_ENV(v, fsys, dir, appenv)
+	return loadOnAPP_ENV(v, open, dir, appenv)
 }
 
-func LoadOnAPP_ENV(v any, dir string, APP_ENV string) error {
-	return LoadFSOnAPP_ENV(v, os.DirFS("."), dir, APP_ENV)
-}
-
-func LoadFSOnAPP_ENV(v any, fsys fs.FS, dir string, APP_ENV string) error {
-	err := setFromFile(v, filepath.Join(dir, APP_ENV+".env"), fsys)
+func loadOnAPP_ENV(v any, open openFunc, dir, appenv string) error {
+	err := setFromFile(v, open, dir, appenv+".env")
 	if err != nil {
 		return err
 	}
 
-	err = setFromFile(v, filepath.Join(dir, ".env"), fsys)
+	err = setFromFile(v, open, dir, ".env")
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -48,8 +69,8 @@ func setFromEnv(v any) error {
 	return setFields(v, os.LookupEnv)
 }
 
-func setFromFile(v any, fname string, fsys fs.FS) error {
-	f, err := fsys.Open(fname)
+func setFromFile(v any, open openFunc, dir, base string) error {
+	f, err := open(dir, base)
 	if err != nil {
 		return err
 	}

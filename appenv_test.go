@@ -11,9 +11,9 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 	}
-	mustSetenv("ENV_A", "A")
-	mustSetenv("ENV_1", "1")
-	mustSetenv("ENV_TRUE", "true")
+	mustSetenv("ENV_STR", "ENV")
+	mustSetenv("ENV_INT", "1")
+	mustSetenv("ENV_BOOL", "true")
 	os.Exit(m.Run())
 }
 
@@ -99,20 +99,22 @@ func TestLoad(t *testing.T) {
 
 	t.Run("get only environ", func(t *testing.T) {
 		type S struct {
-			A    string `env:"ENV_A"`
-			One  int    `env:"ENV_1"`
-			True bool   `env:"ENV_TRUE"`
+			Str  string `env:"ENV_STR"`
+			Int  int    `env:"ENV_INT"`
+			Bool bool   `env:"ENV_BOOL"`
 		}
-		testLoad[S](t, "empty", S{"A", 1, true})
+		testLoad[S](t, "empty", S{"ENV", 1, true})
 	})
 
 	t.Run("get from production.env", func(t *testing.T) {
 		type T struct {
-			A   string `env:"ENV_A"`
-			B   string `env:"PROD_B"`
-			One int    `env:"ENV_1"`
-			Two int    `env:"PROD_2"`
+			EnvStr  string `env:"ENV_STR"`
+			DotStr  string `env:"DOT_STR"`
+			ProdStr string `env:"PROD_STR"`
+			EnvInt  int    `env:"ENV_INT"`
+			DotInt  int    `env:"DOT_INT"`
+			ProdInt int    `env:"PROD_INT"`
 		}
-		testLoad[T](t, "production", T{"A", "B", 1, 2})
+		testLoad[T](t, "production", T{"ENV", "DOT", "PROD", 1, 1, 1})
 	})
 }
