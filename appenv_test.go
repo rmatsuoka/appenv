@@ -14,6 +14,10 @@ func TestMain(m *testing.M) {
 	mustSetenv("ENV_STR", "ENV")
 	mustSetenv("ENV_INT", "1")
 	mustSetenv("ENV_BOOL", "true")
+	err := os.Unsetenv("APP_ENV")
+	if err != nil {
+		panic(err)
+	}
 	os.Exit(m.Run())
 }
 
@@ -92,7 +96,16 @@ func testLoad[T comparable](t *testing.T, APP_ENV string, expect T) {
 	}
 }
 
-func TestLoad(t *testing.T) {
+type EnvDotProd struct {
+	EnvStr  string `env:"ENV_STR"`
+	DotStr  string `env:"DOT_STR"`
+	ProdStr string `env:"PROD_STR"`
+	EnvInt  int    `env:"ENV_INT"`
+	DotInt  int    `env:"DOT_INT"`
+	ProdInt int    `env:"PROD_INT"`
+}
+
+func TestLoadOnAPP_ENV(t *testing.T) {
 	t.Run("empty struct", func(t *testing.T) {
 		testLoad[struct{}](t, "empty", struct{}{})
 	})
@@ -106,15 +119,33 @@ func TestLoad(t *testing.T) {
 		testLoad[S](t, "empty", S{"ENV", 1, true})
 	})
 
-	t.Run("get from production.env", func(t *testing.T) {
-		type T struct {
-			EnvStr  string `env:"ENV_STR"`
-			DotStr  string `env:"DOT_STR"`
-			ProdStr string `env:"PROD_STR"`
-			EnvInt  int    `env:"ENV_INT"`
-			DotInt  int    `env:"DOT_INT"`
-			ProdInt int    `env:"PROD_INT"`
-		}
-		testLoad[T](t, "production", T{"ENV", "DOT", "PROD", 1, 1, 1})
+	t.Run("set with production.env, .env, and system environment", func(t *testing.T) {
+		testLoad[EnvDotProd](t, "production", EnvDotProd{"ENV", "DOT", "PROD", 1, 1, 1})
 	})
+}
+
+func TestLoad(t *testing.T) {
+	expect := EnvDotProd{"ENV", "DOT", "PROD", 1, 1, 1}
+
+	var v EnvDotProd
+	err := Load(&v, "./testdata/test1/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v != expect {
+		t.Fatalf("expect %+v but got %+v", expect, v)
+	}
+}
+
+func TestLoadFS(t *testing.T) {
+	expect := EnvDotProd{"ENV", "DOT", "PROD", 1, 1, 1}
+
+	var v EnvDotProd
+	err := LoadFS(&v, os.DirFS("./testdata/test1/"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v != expect {
+		t.Fatalf("expect %+v but got %+v", expect, v)
+	}
 }
